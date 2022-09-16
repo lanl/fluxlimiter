@@ -1,5 +1,6 @@
 import numpy as np
 from numba import njit
+jitcfg = dict(target_backend='cpu') #NOTE: was target='cpu'
 
 #def definebin(jmax,sorted_array):
 #   deltarend = np.zeros(jmax+1)
@@ -11,7 +12,7 @@ from numba import njit
 #   deltarbin = np.diff(deltarend)
 #   return deltarend, deltarbin
 
-@njit(target='cpu')
+@njit(**jitcfg)
 def definebin(jmax, positive):
    deltarend = [0.0]
    nbin = int(len(positive)/jmax)
@@ -27,7 +28,7 @@ def definebin(jmax, positive):
    return deltarend, np.diff(np.array(deltarend)), jmaxnew
 
 
-@njit(target='cpu')
+@njit(**jitcfg)
 def phiPWNONequalbin(b,xj,xltr,deltarbin,jmax,phi0):
    # for numba
    b = b.ravel()
@@ -57,7 +58,7 @@ def phiPWNONequalbin(b,xj,xltr,deltarbin,jmax,phi0):
    return phi
 
 
-@njit(target='cpu')
+@njit(**jitcfg)
 def deltarfuncNONequalbin(rPM,jmax,deltarend,deltarbin): #deltar vector defined in the analytical form, which is also the derivative of o wrt b
    deltar = np.zeros(jmax)
    if 0.0 < rPM < deltarend[jmax] + 1.e-14:
@@ -75,7 +76,7 @@ def deltarfuncNONequalbin(rPM,jmax,deltarend,deltarbin): #deltar vector defined 
    return deltar
 
 
-@njit(target='cpu')
+@njit(**jitcfg)
 def limiterJacobianPWNONequalbin(dt,dx,nu,u,u_): #(dt,dx,n,nu,limiter,idx2,u,u_):
    max_man = 0.6 
    # for numba
@@ -90,14 +91,16 @@ def limiterJacobianPWNONequalbin(dt,dx,nu,u,u_): #(dt,dx,n,nu,limiter,idx2,u,u_)
    _0n1n23 = np.array([1.,-1.,-1.,1.,0.])
    _1n2n34 = np.array([0.,1.,-1.,-1.,1.])
    # get rP, rM
+   tiny1 = 1e-16 #TODO: * np.random.randn?
+   tiny2 = 1e-14 #TODO: * np.random.randn?
    if np.sign(u[2]) > 0:
-      rP = np.dot(_n12, u) / np.dot(_n23, u + 1e-16)
+      rP = np.dot(_n12, u) / (np.dot(_n23, u) + tiny1)
    else:
-      rP = np.dot(_n34, u) / np.dot(_n23, u + 1e-16)
+      rP = np.dot(_n34, u) / (np.dot(_n23, u) + tiny1)
    if np.sign(u_[2]) > 0:
-      rM = np.dot(_n12, u_) / np.dot(_n23, u_ + 1e-14)
+      rM = np.dot(_n12, u_) / (np.dot(_n23, u_) + tiny2)
    else:
-      rM = np.dot(_n34, u_) / np.dot(_n23, u_ + 1e-14)
+      rM = np.dot(_n34, u_) / (np.dot(_n23, u_) + tiny2)
 
    # minimized division
    nu_dx = nu/dx
